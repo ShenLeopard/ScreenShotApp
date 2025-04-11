@@ -69,20 +69,52 @@ public partial class Form1 : Form
     {
         try
         {
-            // 計算包含所有顯示器的虛擬螢幕邊界
-            Rectangle virtualScreen = SystemInformation.VirtualScreen;
-            Bitmap screenBitmap = new Bitmap(virtualScreen.Width, virtualScreen.Height, PixelFormat.Format32bppArgb);
+            Rectangle totalBounds = Rectangle.Empty;
+            foreach (Screen screen in Screen.AllScreens)
+            {
+                totalBounds = Rectangle.Union(totalBounds, screen.Bounds);
+            }
+
+            Bitmap screenBitmap = new Bitmap(totalBounds.Width, totalBounds.Height, PixelFormat.Format32bppArgb);
 
             using (Graphics g = Graphics.FromImage(screenBitmap))
             {
-                // 從螢幕左上角開始擷取指定大小的畫面
-                g.CopyFromScreen(virtualScreen.Left, virtualScreen.Top, 0, 0, virtualScreen.Size, CopyPixelOperation.SourceCopy);
+                // 清除背景（透明）
+                g.Clear(Color.Transparent);
+
+                foreach (Screen screen in Screen.AllScreens)
+                {
+                    using (Bitmap screenCapture = new Bitmap(
+                        screen.Bounds.Width,
+                        screen.Bounds.Height,
+                        PixelFormat.Format32bppArgb))
+                    {
+                        using (Graphics screenGraphics = Graphics.FromImage(screenCapture))
+                        {
+                            screenGraphics.CopyFromScreen(
+                                screen.Bounds.X,
+                                screen.Bounds.Y,
+                                0,
+                                0,
+                                screen.Bounds.Size,
+                                CopyPixelOperation.SourceCopy);
+                        }
+
+                        g.DrawImage(
+                            screenCapture,
+                            new Rectangle(
+                                screen.Bounds.X - totalBounds.X,
+                                screen.Bounds.Y - totalBounds.Y,
+                                screen.Bounds.Width,
+                                screen.Bounds.Height));
+                    }
+                }
             }
             return screenBitmap;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"擷取螢幕時發生錯誤: {ex.Message}");
+            Console.WriteLine($"截圖時發生錯誤: {ex.Message}");
             return null;
         }
     }
@@ -96,15 +128,23 @@ public partial class Form1 : Form
             return;
         }
 
-        this.Cursor = Cursors.WaitCursor;
-        btnRecognizeText.Enabled = false;
-        btnCaptureScreen.Enabled = false;
-
-        using (Bitmap imageToRecognize = new Bitmap(pictureBoxCanvas.Image)) // 使用副本
+        try
         {
-            await GeminiApiService.CallGeminiApiAsync(imageToRecognize);
-        }
+            this.Cursor = Cursors.WaitCursor;
+            btnRecognizeText.Enabled = false;
+            btnCaptureScreen.Enabled = false;
 
+            using (Bitmap imageToRecognize = new Bitmap(pictureBoxCanvas.Image))
+            {
+                await GeminiApiService.CallGeminiApiAsync(imageToRecognize);
+            }
+        }
+        finally
+        {
+            this.Cursor = Cursors.Default;
+            btnRecognizeText.Enabled = true;
+            btnCaptureScreen.Enabled = true;
+        }
     }
 
 }
@@ -124,9 +164,14 @@ internal class ScreenCaptureForm : Form
         _backgroundBitmap = background;
 
         this.FormBorderStyle = FormBorderStyle.None;
-        this.WindowState = FormWindowState.Maximized; // 最大化以覆蓋所有螢幕
-        this.StartPosition = FormStartPosition.Manual; // 手動設定位置
-        this.Bounds = SystemInformation.VirtualScreen; // 設定邊界為虛擬螢幕大小
+        this.WindowState = FormWindowState.Normal; // 不要最大化
+        this.StartPosition = FormStartPosition.Manual;
+        Rectangle totalBounds = Rectangle.Empty;
+        foreach (Screen screen in Screen.AllScreens)
+        {
+            totalBounds = Rectangle.Union(totalBounds, screen.Bounds);
+        }
+        this.Bounds = totalBounds;
         this.TopMost = true;
         this.Cursor = Cursors.Cross; // 設定滑鼠指標為十字
         this.DoubleBuffered = true; // 減少繪圖閃爍

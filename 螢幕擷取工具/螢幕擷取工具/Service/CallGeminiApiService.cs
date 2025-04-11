@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 using GeminiApi.Models.Request;
-using Req = GeminiApi.Models.Request;       // Request ¼Ò«¬§O¦W
+using Req = GeminiApi.Models.Request;
 using Resp = GeminiApi.Models.Response;
-using ¿Ã¹õÂ^¨ú¤u¨ã;       // Response ¼Ò«¬§O¦W
+using è¢å¹•æ“·å–å·¥å…·;
 
 namespace GeminiApi.Services
 {
@@ -22,7 +22,7 @@ namespace GeminiApi.Services
             httpClient.DefaultRequestHeaders.Accept.Clear();
             httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-            // ±N Bitmap Âà´«¬° byte[]
+            // å°‡ Bitmap è½‰æ›ç‚º byte[]
             using MemoryStream ms = new MemoryStream();
             bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
             byte[] bitmapBytes = ms.ToArray();
@@ -41,7 +41,7 @@ namespace GeminiApi.Services
                     {
                         Parts = new object[]
                         {
-                            new Req.TextPart { Text = "½Ğ¿ëÃÑ¦¹¹Ï¤ù¤¤ªº¤å¦r¡A¨Ã¨Ì·Ó­ì¥»ªº®æ¦¡±Æª©¡C¤£»İ¦^À³ÃB¥~¤º®e¡A¥u»İ¿é¥X¹Ï¤ù¤Wªº¤å¦r§Y¥i" },
+                            new Req.TextPart { Text = "è«‹è¾¨è­˜æ­¤åœ–ç‰‡ä¸­çš„æ–‡å­—ï¼Œä¸¦ä¾ç…§åŸæœ¬çš„æ ¼å¼æ’ç‰ˆã€‚ä¸éœ€å›æ‡‰é¡å¤–å…§å®¹ï¼Œåªéœ€è¼¸å‡ºåœ–ç‰‡ä¸Šçš„æ–‡å­—å³å¯" },
                             new Req.InlineDataPart { InlineData = inlineData }
                         }
                     }
@@ -64,15 +64,14 @@ namespace GeminiApi.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var apiResponse = JsonConvert.DeserializeObject<Resp.ApiResponseModel>(responseContent);
-                    MessageBox.Show(
-                        $"¦^À³°T®§: {apiResponse.Candidates[0].Content.Parts[0].Text}",
-                        "API Response",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                    using (var resultForm = new ResultForm(apiResponse.Candidates[0].Content.Parts[0].Text))
+                    {
+                        resultForm.ShowDialog();
+                    }
                 }
                 else
                 {
-                    if (MessageBox.Show(responseContent, "(«öOK½Æ»s¿ù»~°T®§)", MessageBoxButtons.OKCancel) == DialogResult.OK)
+                    if (MessageBox.Show(responseContent, "(æŒ‰OKè¤‡è£½éŒ¯èª¤è¨Šæ¯)", MessageBoxButtons.OKCancel) == DialogResult.OK)
                     {
                         Clipboard.SetText(responseContent);
                     }
