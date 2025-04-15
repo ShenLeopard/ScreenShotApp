@@ -69,46 +69,19 @@ public partial class Form1 : Form
     {
         try
         {
+            // 取得所有螢幕的聯合邊界
             Rectangle totalBounds = Rectangle.Empty;
             foreach (Screen screen in Screen.AllScreens)
             {
                 totalBounds = Rectangle.Union(totalBounds, screen.Bounds);
             }
 
+            // 建立 Bitmap 並以一次 CopyFromScreen 擷取整個區域
             Bitmap screenBitmap = new Bitmap(totalBounds.Width, totalBounds.Height, PixelFormat.Format32bppArgb);
-
             using (Graphics g = Graphics.FromImage(screenBitmap))
             {
-                // 清除背景（透明）
                 g.Clear(Color.Transparent);
-
-                foreach (Screen screen in Screen.AllScreens)
-                {
-                    using (Bitmap screenCapture = new Bitmap(
-                        screen.Bounds.Width,
-                        screen.Bounds.Height,
-                        PixelFormat.Format32bppArgb))
-                    {
-                        using (Graphics screenGraphics = Graphics.FromImage(screenCapture))
-                        {
-                            screenGraphics.CopyFromScreen(
-                                screen.Bounds.X,
-                                screen.Bounds.Y,
-                                0,
-                                0,
-                                screen.Bounds.Size,
-                                CopyPixelOperation.SourceCopy);
-                        }
-
-                        g.DrawImage(
-                            screenCapture,
-                            new Rectangle(
-                                screen.Bounds.X - totalBounds.X,
-                                screen.Bounds.Y - totalBounds.Y,
-                                screen.Bounds.Width,
-                                screen.Bounds.Height));
-                    }
-                }
+                g.CopyFromScreen(totalBounds.Location, new Point(0, 0), totalBounds.Size, CopyPixelOperation.SourceCopy);
             }
             return screenBitmap;
         }
@@ -118,6 +91,7 @@ public partial class Form1 : Form
             return null;
         }
     }
+
 
     // --- 辨識文字按鈕 ---
     private async void btnRecognizeText_Click(object sender, EventArgs e)
@@ -156,6 +130,8 @@ internal class ScreenCaptureForm : Form
     private Rectangle _selectionRectangle;
     private bool _isDragging = false;
     private readonly Bitmap _backgroundBitmap; // 儲存傳入的完整螢幕截圖
+    private Rectangle _prevSelectionRectangle = Rectangle.Empty;//記錄前一次的選取矩形，與新矩形求聯集後重繪聯集區域
+
 
     public Rectangle SelectedRectangle => _selectionRectangle;
 
@@ -201,17 +177,29 @@ internal class ScreenCaptureForm : Form
     {
         if (_isDragging)
         {
-            // 計算目前的矩形範圍 (確保寬高為正)
+            // 先保存上一個區域
+            Rectangle prevRect = _selectionRectangle;
+
+            // 重新計算目前選取矩形 (確保座標與尺寸為正)
             int x = Math.Min(_startPoint.X, e.X);
             int y = Math.Min(_startPoint.Y, e.Y);
             int width = Math.Abs(_startPoint.X - e.X);
             int height = Math.Abs(_startPoint.Y - e.Y);
             _selectionRectangle = new Rectangle(x, y, width, height);
 
-            // 觸發重繪，更新選擇框
-            this.Invalidate();
+            // 計算需要重繪的區域（聯集先前與新的矩形）
+            Rectangle invalidateRect = Rectangle.Union(prevRect, _selectionRectangle);
+            // 稍微擴大區域以涵蓋邊框繪製
+            invalidateRect.Inflate(2, 2);
+
+            // 只重繪必要的區域，減少不必要的資源繪製
+            this.Invalidate(invalidateRect);
+
+            // 更新前一次使用的選取矩形
+            _prevSelectionRectangle = _selectionRectangle;
         }
     }
+
 
     private void CaptureForm_MouseUp(object sender, MouseEventArgs e)
     {
