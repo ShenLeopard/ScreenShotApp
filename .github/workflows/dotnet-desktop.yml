@@ -28,7 +28,7 @@ jobs:
       run: dotnet build "./螢幕擷取工具/螢幕擷取工具/螢幕擷取工具.csproj" --configuration Release
 
     - name: Publish app
-      run: dotnet publish "./螢幕擷取工具/螢幕擷取工具/螢幕擷取工具.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -o publish_output
+      run: dotnet publish "./螢幕擷取工具/螢幕擷取工具/螢幕擷取工具.csproj" -c Release -r win-x64 --self-contained true -o publish_output
 
     - name: Zip output
       run: Compress-Archive -Path publish_output/* -DestinationPath MyApp.zip
