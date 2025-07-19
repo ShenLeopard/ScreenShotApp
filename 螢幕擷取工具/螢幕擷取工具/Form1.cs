@@ -1,6 +1,6 @@
-using System.Drawing;
-using System.Drawing.Imaging;
 using GeminiApi.Services;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 
 namespace 螢幕擷取工具;
 public partial class Form1 : Form
@@ -149,7 +149,7 @@ internal class ScreenCaptureForm : Form
         }
         this.Bounds = totalBounds;
         this.TopMost = true;
-        this.Cursor = Cursors.Cross; // 設定滑鼠指標為十字
+        this.Cursor = CreateHighContrastCrossCursor();
         this.DoubleBuffered = true; // 減少繪圖閃爍
 
         // 設定背景為傳入的螢幕截圖 (模擬透明效果)
@@ -161,6 +161,37 @@ internal class ScreenCaptureForm : Form
         this.MouseUp += CaptureForm_MouseUp;
         this.Paint += CaptureForm_Paint;
         this.KeyDown += CaptureForm_KeyDown; // 允許按 ESC 取消
+    }
+
+    // 產生一個高對比十字游標，白底黑邊，大小 32×32
+    private Cursor CreateHighContrastCrossCursor()
+    {
+        const int size = 32;
+        Bitmap bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+        using (Graphics g = Graphics.FromImage(bmp))
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.Clear(Color.Transparent);
+
+            int thickness = 3;     // 線寬
+            int half = size / 2;   // 中心點
+
+            using (Pen penBorder = new Pen(Color.Black, thickness + 2))
+            {
+                // 畫黑邊十字
+                g.DrawLine(penBorder, half, 0, half, size);
+                g.DrawLine(penBorder, 0, half, size, half);
+            }
+            using (Pen penInner = new Pen(Color.White, thickness))
+            {
+                // 畫白色十字
+                g.DrawLine(penInner, half, 1, half, size - 2);
+                g.DrawLine(penInner, 1, half, size - 2, half);
+            }
+        }
+        // 轉換成 Cursor
+        IntPtr hIcon = bmp.GetHicon();
+        return new Cursor(hIcon);
     }
 
     private void CaptureForm_MouseDown(object sender, MouseEventArgs e)
