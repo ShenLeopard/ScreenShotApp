@@ -1,56 +1,187 @@
 using GeminiApi.Services;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 
 namespace 螢幕擷取工具;
 public partial class Form1 : Form
 {
+    // Windows API for global hotkey
+    [DllImport("user32.dll")]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll")]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    private const int HOTKEY_ID = 1;
+    private const uint MOD_CONTROL = 0x0002;
+    private const uint MOD_SHIFT = 0x0004;
+    private const uint VK_F1 = 0x70; // F1 key
+
+    private System.Windows.Forms.Timer delayTimer;
+    private System.Windows.Forms.Timer countdownTimer; // 新增倒數計時器
+    private int delaySeconds = 3; // 預設延遲3秒
+    private int remainingSeconds = 0; // 剩餘秒數
+    private CountdownForm countdownForm; // 倒數顯示表單
+
     public Form1()
     {
         InitializeComponent();
+
+        // 初始化延遲計時器
+        delayTimer = new System.Windows.Forms.Timer();
+        delayTimer.Tick += DelayTimer_Tick;
+
+        // 初始化倒數計時器 (每秒更新一次)
+        countdownTimer = new System.Windows.Forms.Timer();
+        countdownTimer.Interval = 1000; // 1秒
+        countdownTimer.Tick += CountdownTimer_Tick;
+
+        // 註冊全域快捷鍵 Ctrl+Shift+F1
+        RegisterHotKey(this.Handle, HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, VK_F1);
+
+        // 綁定延遲秒數變更事件
+        numericUpDownDelay.ValueChanged += (s, e) =>
+        {
+            delaySeconds = (int)numericUpDownDelay.Value;
+            UpdateDelayInfo();
+        };
+
+        // 初始化顯示
+        UpdateDelayInfo();
     }
 
-    // --- 擷取畫面按鈕的行為 ---
+    private void CountdownTimer_Tick(object sender, EventArgs e)
+    {
+        remainingSeconds--;
+
+        if (remainingSeconds > 0)
+        {
+            // 更新倒數顯示
+            countdownForm?.UpdateCountdown(remainingSeconds);
+        }
+    }
+
+    private void UpdateDelayInfo()
+    {
+        if (delaySeconds == 0)
+        {
+            lblDelayInfo.Text = "⚡ 立即截圖模式";
+            lblDelayInfo.ForeColor = Color.Green;
+        }
+        else
+        {
+            lblDelayInfo.Text = $"⏱️ {delaySeconds} 秒後自動截圖";
+            lblDelayInfo.ForeColor = Color.OrangeRed;
+        }
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        const int WM_HOTKEY = 0x0312;
+
+        if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
+        {
+            // 快捷鍵被按下,開始延遲截圖
+            StartDelayedCapture();
+        }
+
+        base.WndProc(ref m);
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        // 取消註冊快捷鍵
+        UnregisterHotKey(this.Handle, HOTKEY_ID);
+        base.OnFormClosing(e);
+    }
+
+    private void StartDelayedCapture()
+    {
+        if (delaySeconds > 0)
+        {
+            // 設定剩餘秒數
+            remainingSeconds = delaySeconds;
+
+            // 顯示倒數提示視窗 (在螢幕右下角)
+            countdownForm = new CountdownForm(remainingSeconds);
+            countdownForm.Show();
+
+            // 這裡不再需要最小化視窗，因為 PerformCapture() 會處理隱藏
+
+            // 啟動延遲計時器
+            delayTimer.Interval = delaySeconds * 1000;
+            delayTimer.Start();
+
+            // 啟動倒數計時器
+            countdownTimer.Start();
+        }
+        else
+        {
+            // 無延遲,立即截圖
+            PerformCapture();
+        }
+    }
+
+    private void DelayTimer_Tick(object sender, EventArgs e)
+    {
+        delayTimer.Stop();
+        countdownTimer.Stop();
+
+        // 關閉倒數視窗
+        countdownForm?.Close();
+        countdownForm = null;
+
+        PerformCapture();
+    }
+
+    // --- 延遲截圖按鈕 ---
     private void btnCaptureScreen_Click(object sender, EventArgs e)
     {
-        // 1. 隱藏主視窗，避免擷取到自己
+        StartDelayedCapture();
+    }
+
+    // --- 立即截圖按鈕 ---
+    private void btnCaptureNow_Click(object sender, EventArgs e)
+    {
+        PerformCapture();
+    }
+
+    // 實際執行截圖的方法
+    private void PerformCapture()
+    {
+        // 1. 隱藏主視窗
         this.Hide();
-        // 短暫延遲確保視窗完全隱藏 (有時需要)
         System.Threading.Thread.Sleep(200);
 
-        // 2. 擷取整個螢幕 (包含所有螢幕)
+        // 2. 擷取整個螢幕
         Bitmap screenBitmap = CaptureFullScreen();
 
         if (screenBitmap != null)
         {
-            // 3. 顯示一個全螢幕、半透明的表單，用於選擇區域
+            // 3. 顯示選擇區域表單
             using (ScreenCaptureForm captureForm = new ScreenCaptureForm(screenBitmap))
             {
                 if (captureForm.ShowDialog() == DialogResult.OK)
                 {
-                    // 4. 如果使用者成功選擇了一個區域
                     Rectangle selectedArea = captureForm.SelectedRectangle;
 
-                    // 5. 從完整螢幕截圖中，根據選擇的區域裁剪出圖片
                     if (selectedArea.Width > 0 && selectedArea.Height > 0)
                     {
                         Bitmap capturedImage = new Bitmap(selectedArea.Width, selectedArea.Height);
                         using (Graphics g = Graphics.FromImage(capturedImage))
                         {
                             g.DrawImage(screenBitmap,
-                                        new Rectangle(0, 0, selectedArea.Width, selectedArea.Height), // 目的矩形 (從(0,0)開始畫)
-                                        selectedArea, // 來源矩形 (從完整截圖中擷取的部分)
+                                        new Rectangle(0, 0, selectedArea.Width, selectedArea.Height),
+                                        selectedArea,
                                         GraphicsUnit.Pixel);
                         }
 
-                        // 6. 將擷取的圖片顯示在 PictureBox 上
-                        //    先釋放舊圖片 (如果有的話)
                         pictureBoxCanvas.Image?.Dispose();
                         pictureBoxCanvas.Image = capturedImage;
                     }
                 }
             }
-            // 釋放完整螢幕截圖資源
             screenBitmap.Dispose();
         }
         else
@@ -58,10 +189,12 @@ public partial class Form1 : Form
             MessageBox.Show("無法擷取螢幕畫面。", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-
-        // 7. 重新顯示主視窗
+        // 4. 恢復視窗狀態 - 確保視窗完全顯示並獲得焦點
+        this.WindowState = FormWindowState.Normal;
         this.Show();
-        this.Activate(); // 確保視窗獲得焦點
+        this.BringToFront(); // 將視窗帶到最前面
+        this.Activate();     // 啟動視窗並獲得焦點
+        this.Focus();        // 確保視窗有焦點
     }
 
     // 輔助方法：擷取完整螢幕
@@ -69,14 +202,12 @@ public partial class Form1 : Form
     {
         try
         {
-            // 取得所有螢幕的聯合邊界
             Rectangle totalBounds = Rectangle.Empty;
             foreach (Screen screen in Screen.AllScreens)
             {
                 totalBounds = Rectangle.Union(totalBounds, screen.Bounds);
             }
 
-            // 建立 Bitmap 並以一次 CopyFromScreen 擷取整個區域
             Bitmap screenBitmap = new Bitmap(totalBounds.Width, totalBounds.Height, PixelFormat.Format32bppArgb);
             using (Graphics g = Graphics.FromImage(screenBitmap))
             {
@@ -92,7 +223,6 @@ public partial class Form1 : Form
         }
     }
 
-
     // --- 辨識文字按鈕 ---
     private async void btnRecognizeText_Click(object sender, EventArgs e)
     {
@@ -107,6 +237,7 @@ public partial class Form1 : Form
             this.Cursor = Cursors.WaitCursor;
             btnRecognizeText.Enabled = false;
             btnCaptureScreen.Enabled = false;
+            btnCaptureNow.Enabled = false;
 
             using (Bitmap imageToRecognize = new Bitmap(pictureBoxCanvas.Image))
             {
@@ -118,9 +249,9 @@ public partial class Form1 : Form
             this.Cursor = Cursors.Default;
             btnRecognizeText.Enabled = true;
             btnCaptureScreen.Enabled = true;
+            btnCaptureNow.Enabled = true;
         }
     }
-
 }
 
 // --- 用於選擇擷取區域的輔助表單 ---
@@ -129,9 +260,8 @@ internal class ScreenCaptureForm : Form
     private Point _startPoint;
     private Rectangle _selectionRectangle;
     private bool _isDragging = false;
-    private readonly Bitmap _backgroundBitmap; // 儲存傳入的完整螢幕截圖
-    private Rectangle _prevSelectionRectangle = Rectangle.Empty;//記錄前一次的選取矩形，與新矩形求聯集後重繪聯集區域
-
+    private readonly Bitmap _backgroundBitmap;
+    private Rectangle _prevSelectionRectangle = Rectangle.Empty;
 
     public Rectangle SelectedRectangle => _selectionRectangle;
 
@@ -140,7 +270,7 @@ internal class ScreenCaptureForm : Form
         _backgroundBitmap = background;
 
         this.FormBorderStyle = FormBorderStyle.None;
-        this.WindowState = FormWindowState.Normal; // 不要最大化
+        this.WindowState = FormWindowState.Normal;
         this.StartPosition = FormStartPosition.Manual;
         Rectangle totalBounds = Rectangle.Empty;
         foreach (Screen screen in Screen.AllScreens)
@@ -150,20 +280,17 @@ internal class ScreenCaptureForm : Form
         this.Bounds = totalBounds;
         this.TopMost = true;
         this.Cursor = CreateHighContrastCrossCursor();
-        this.DoubleBuffered = true; // 減少繪圖閃爍
-
-        // 設定背景為傳入的螢幕截圖 (模擬透明效果)
+        this.DoubleBuffered = true;
         this.BackgroundImage = _backgroundBitmap;
-        this.BackgroundImageLayout = ImageLayout.None; // 不要縮放背景圖
+        this.BackgroundImageLayout = ImageLayout.None;
 
         this.MouseDown += CaptureForm_MouseDown;
         this.MouseMove += CaptureForm_MouseMove;
         this.MouseUp += CaptureForm_MouseUp;
         this.Paint += CaptureForm_Paint;
-        this.KeyDown += CaptureForm_KeyDown; // 允許按 ESC 取消
+        this.KeyDown += CaptureForm_KeyDown;
     }
 
-    // 產生一個高對比十字游標，白底黑邊，大小 32×32
     private Cursor CreateHighContrastCrossCursor()
     {
         const int size = 32;
@@ -173,23 +300,20 @@ internal class ScreenCaptureForm : Form
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Color.Transparent);
 
-            int thickness = 3;     // 線寬
-            int half = size / 2;   // 中心點
+            int thickness = 3;
+            int half = size / 2;
 
             using (Pen penBorder = new Pen(Color.Black, thickness + 2))
             {
-                // 畫黑邊十字
                 g.DrawLine(penBorder, half, 0, half, size);
                 g.DrawLine(penBorder, 0, half, size, half);
             }
             using (Pen penInner = new Pen(Color.White, thickness))
             {
-                // 畫白色十字
                 g.DrawLine(penInner, half, 1, half, size - 2);
                 g.DrawLine(penInner, 1, half, size - 2, half);
             }
         }
-        // 轉換成 Cursor
         IntPtr hIcon = bmp.GetHicon();
         return new Cursor(hIcon);
     }
@@ -200,7 +324,7 @@ internal class ScreenCaptureForm : Form
         {
             _startPoint = e.Location;
             _isDragging = true;
-            _selectionRectangle = new Rectangle(_startPoint, Size.Empty); // 重置矩形
+            _selectionRectangle = new Rectangle(_startPoint, Size.Empty);
         }
     }
 
@@ -208,29 +332,21 @@ internal class ScreenCaptureForm : Form
     {
         if (_isDragging)
         {
-            // 先保存上一個區域
             Rectangle prevRect = _selectionRectangle;
 
-            // 重新計算目前選取矩形 (確保座標與尺寸為正)
             int x = Math.Min(_startPoint.X, e.X);
             int y = Math.Min(_startPoint.Y, e.Y);
             int width = Math.Abs(_startPoint.X - e.X);
             int height = Math.Abs(_startPoint.Y - e.Y);
             _selectionRectangle = new Rectangle(x, y, width, height);
 
-            // 計算需要重繪的區域（聯集先前與新的矩形）
             Rectangle invalidateRect = Rectangle.Union(prevRect, _selectionRectangle);
-            // 稍微擴大區域以涵蓋邊框繪製
             invalidateRect.Inflate(2, 2);
 
-            // 只重繪必要的區域，減少不必要的資源繪製
             this.Invalidate(invalidateRect);
-
-            // 更新前一次使用的選取矩形
             _prevSelectionRectangle = _selectionRectangle;
         }
     }
-
 
     private void CaptureForm_MouseUp(object sender, MouseEventArgs e)
     {
@@ -238,12 +354,11 @@ internal class ScreenCaptureForm : Form
         {
             _isDragging = false;
 
-            // 如果選擇區域有效 (寬高大於0)，則設定結果並關閉表單
             if (_selectionRectangle.Width > 0 && _selectionRectangle.Height > 0)
             {
                 this.DialogResult = DialogResult.OK;
             }
-            else // 否則視為取消
+            else
             {
                 this.DialogResult = DialogResult.Cancel;
             }
@@ -253,24 +368,20 @@ internal class ScreenCaptureForm : Form
 
     private void CaptureForm_Paint(object sender, PaintEventArgs e)
     {
-        // 繪製半透明遮罩效果 和 清晰的選取區域
-        // 1. 先繪製一個半透明的黑色遮罩覆蓋整個畫面
-        using (SolidBrush semiTransparentBrush = new SolidBrush(Color.FromArgb(120, 0, 0, 0))) // Alpha=120 的黑色
+        using (SolidBrush semiTransparentBrush = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
         {
             e.Graphics.FillRectangle(semiTransparentBrush, this.ClientRectangle);
         }
 
-        // 2. 如果正在拖曳，將選擇區域的部分用原始背景圖"蓋掉"半透明遮罩，使其變清晰
         if (_isDragging && _selectionRectangle.Width > 0 && _selectionRectangle.Height > 0)
         {
             e.Graphics.DrawImage(
-                _backgroundBitmap,      // 來源圖 (完整截圖)
-                _selectionRectangle,    // 目的區域 (在表單上繪製的位置和大小)
-                _selectionRectangle,    // 來源區域 (從完整截圖中擷取的區域)
+                _backgroundBitmap,
+                _selectionRectangle,
+                _selectionRectangle,
                 GraphicsUnit.Pixel
             );
 
-            // 3. 在清晰區域周圍繪製一個紅色邊框，標示選擇範圍
             using (Pen borderPen = new Pen(Color.Red, 1))
             {
                 e.Graphics.DrawRectangle(borderPen, _selectionRectangle);
@@ -280,7 +391,6 @@ internal class ScreenCaptureForm : Form
 
     private void CaptureForm_KeyDown(object sender, KeyEventArgs e)
     {
-        // 按下 ESC 鍵取消擷取
         if (e.KeyCode == Keys.Escape)
         {
             this.DialogResult = DialogResult.Cancel;
@@ -288,12 +398,57 @@ internal class ScreenCaptureForm : Form
         }
     }
 
-    // 覆寫 Dispose 方法以釋放背景 Bitmap
     protected override void Dispose(bool disposing)
     {
-        // 注意：此處不應 Dispose _backgroundBitmap，因為它是從 Form1 傳入的，
-        // Form1 會負責 Dispose 它。如果在這裡 Dispose，Form1 可能會出錯。
         base.Dispose(disposing);
     }
 }
 
+// --- 倒數提示視窗 ---
+internal class CountdownForm : Form
+{
+    private Label lblCountdown;
+
+    public CountdownForm(int initialSeconds)
+    {
+        // 視窗設定
+        this.FormBorderStyle = FormBorderStyle.None;
+        this.StartPosition = FormStartPosition.Manual;
+        this.Size = new Size(200, 100);
+        this.TopMost = true;
+        this.BackColor = Color.FromArgb(40, 40, 40);
+        this.Opacity = 0.9;
+
+        // 設定位置在螢幕右下角
+        Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
+        this.Location = new Point(
+            workingArea.Right - this.Width - 20,
+            workingArea.Bottom - this.Height - 20
+        );
+
+        // 倒數標籤
+        lblCountdown = new Label();
+        lblCountdown.Dock = DockStyle.Fill;
+        lblCountdown.Text = $"{initialSeconds}";
+        lblCountdown.Font = new Font("微軟正黑體", 48, FontStyle.Bold);
+        lblCountdown.ForeColor = Color.White;
+        lblCountdown.TextAlign = ContentAlignment.MiddleCenter;
+        this.Controls.Add(lblCountdown);
+
+        // 加上圓角效果 (optional)
+        this.Region = System.Drawing.Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, 20, 20));
+    }
+
+    [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
+    private static extern IntPtr CreateRoundRectRgn(
+        int nLeftRect, int nTopRect, int nRightRect, int nBottomRect,
+        int nWidthEllipse, int nHeightEllipse);
+
+    public void UpdateCountdown(int seconds)
+    {
+        if (lblCountdown != null && !this.IsDisposed)
+        {
+            lblCountdown.Text = $"{seconds}";
+        }
+    }
+}
