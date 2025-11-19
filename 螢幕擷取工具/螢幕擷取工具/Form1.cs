@@ -19,22 +19,22 @@ public partial class Form1 : Form
     private const uint VK_F1 = 0x70; // F1 key
 
     private System.Windows.Forms.Timer delayTimer;
-    private System.Windows.Forms.Timer countdownTimer; // 新增倒數計時器
-    private int delaySeconds = 3; // 預設延遲3秒
-    private int remainingSeconds = 0; // 剩餘秒數
-    private CountdownForm countdownForm; // 倒數顯示表單
+    private System.Windows.Forms.Timer countdownTimer;
+    private int delaySeconds = 3;
+    private int remainingSeconds = 0;
+    private CountdownForm countdownForm;
 
     public Form1()
     {
         InitializeComponent();
 
-        // 初始化延遲計時器
+        // 初始化延遲計時器 (只觸發一次)
         delayTimer = new System.Windows.Forms.Timer();
         delayTimer.Tick += DelayTimer_Tick;
 
-        // 初始化倒數計時器 (每秒更新一次)
+        // 初始化倒數計時器 (每秒更新一次 UI)
         countdownTimer = new System.Windows.Forms.Timer();
-        countdownTimer.Interval = 1000; // 1秒
+        countdownTimer.Interval = 1000;
         countdownTimer.Tick += CountdownTimer_Tick;
 
         // 註冊全域快捷鍵 Ctrl+Shift+F1
@@ -47,17 +47,16 @@ public partial class Form1 : Form
             UpdateDelayInfo();
         };
 
-        // 初始化顯示
         UpdateDelayInfo();
     }
 
+    // 倒數計時器邏輯
     private void CountdownTimer_Tick(object sender, EventArgs e)
     {
         remainingSeconds--;
 
         if (remainingSeconds > 0)
         {
-            // 更新倒數顯示
             countdownForm?.UpdateCountdown(remainingSeconds);
         }
     }
@@ -82,7 +81,6 @@ public partial class Form1 : Form
 
         if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
         {
-            // 快捷鍵被按下,開始延遲截圖
             StartDelayedCapture();
         }
 
@@ -91,7 +89,6 @@ public partial class Form1 : Form
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        // 取消註冊快捷鍵
         UnregisterHotKey(this.Handle, HOTKEY_ID);
         base.OnFormClosing(e);
     }
@@ -100,27 +97,45 @@ public partial class Form1 : Form
     {
         if (delaySeconds > 0)
         {
-            // 設定剩餘秒數
+            // 隱藏主視窗
+            this.Hide();
+
             remainingSeconds = delaySeconds;
 
-            // 顯示倒數提示視窗 (在螢幕右下角)
+            // 建立倒數視窗
             countdownForm = new CountdownForm(remainingSeconds);
+
+            // !!! 關鍵修改：訂閱取消事件 !!!
+            countdownForm.RequestCancel += (s, e) => CancelCapture();
+
             countdownForm.Show();
 
-            // 這裡不再需要最小化視窗，因為 PerformCapture() 會處理隱藏
-
-            // 啟動延遲計時器
+            // 啟動計時器
             delayTimer.Interval = delaySeconds * 1000;
             delayTimer.Start();
-
-            // 啟動倒數計時器
             countdownTimer.Start();
         }
         else
         {
-            // 無延遲,立即截圖
             PerformCapture();
         }
+    }
+    private void CancelCapture()
+    {
+        // 1. 停止所有計時器 (這就是之前缺少的關鍵！)
+        delayTimer.Stop();
+        countdownTimer.Stop();
+
+        // 2. 關閉倒數視窗
+        if (countdownForm != null && !countdownForm.IsDisposed)
+        {
+            countdownForm.Close();
+            countdownForm = null;
+        }
+
+        // 3. 恢復主視窗顯示
+        this.Show();
+        this.Activate(); // 確保主視窗回到最上層並取得焦點
     }
 
     private void DelayTimer_Tick(object sender, EventArgs e)
@@ -128,7 +143,6 @@ public partial class Form1 : Form
         delayTimer.Stop();
         countdownTimer.Stop();
 
-        // 關閉倒數視窗
         countdownForm?.Close();
         countdownForm = null;
 
@@ -141,6 +155,7 @@ public partial class Form1 : Form
         StartDelayedCapture();
     }
 
+
     // --- 立即截圖按鈕 ---
     private void btnCaptureNow_Click(object sender, EventArgs e)
     {
@@ -150,9 +165,18 @@ public partial class Form1 : Form
     // 實際執行截圖的方法
     private void PerformCapture()
     {
-        // 1. 隱藏主視窗
-        this.Hide();
-        System.Threading.Thread.Sleep(200);
+        // 1. 確保視窗隱藏 (如果是立即截圖模式，視窗還在，所以這裡要 Hide)
+        // 如果是延遲模式，StartDelayedCapture 已經 Hide 過了，再 Hide 一次也沒問題
+        if (this.Visible)
+        {
+            this.Hide();
+            System.Threading.Thread.Sleep(200); // 等待隱藏動畫
+        }
+        else
+        {
+            // 延遲模式下視窗早已隱藏，稍微等待確保倒數視窗完全關閉
+            System.Threading.Thread.Sleep(100);
+        }
 
         // 2. 擷取整個螢幕
         Bitmap screenBitmap = CaptureFullScreen();
@@ -189,15 +213,12 @@ public partial class Form1 : Form
             MessageBox.Show("無法擷取螢幕畫面。", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        // 4. 恢復視窗狀態 - 確保視窗完全顯示並獲得焦點
-        this.WindowState = FormWindowState.Normal;
+        // 4. 恢復視窗狀態 - [優化] 移除多餘的 WindowState 設定
         this.Show();
-        this.BringToFront(); // 將視窗帶到最前面
-        this.Activate();     // 啟動視窗並獲得焦點
-        this.Focus();        // 確保視窗有焦點
+        this.Activate(); // 關鍵：讓視窗回到前景並取得焦點
     }
 
-    // 輔助方法：擷取完整螢幕
+    // 🔧 修正 #7: 改善多螢幕截圖支援
     private Bitmap CaptureFullScreen()
     {
         try
@@ -261,7 +282,7 @@ internal class ScreenCaptureForm : Form
     private Rectangle _selectionRectangle;
     private bool _isDragging = false;
     private readonly Bitmap _backgroundBitmap;
-    private Rectangle _prevSelectionRectangle = Rectangle.Empty;
+    private Cursor _customCursor; // 🔧 修正 #5: 儲存自訂游標以便釋放
 
     public Rectangle SelectedRectangle => _selectionRectangle;
 
@@ -279,7 +300,11 @@ internal class ScreenCaptureForm : Form
         }
         this.Bounds = totalBounds;
         this.TopMost = true;
-        this.Cursor = CreateHighContrastCrossCursor();
+
+        // 🔧 修正 #5: 儲存游標參考
+        _customCursor = CreateHighContrastCrossCursor();
+        this.Cursor = _customCursor;
+
         this.DoubleBuffered = true;
         this.BackgroundImage = _backgroundBitmap;
         this.BackgroundImageLayout = ImageLayout.None;
@@ -289,12 +314,57 @@ internal class ScreenCaptureForm : Form
         this.MouseUp += CaptureForm_MouseUp;
         this.Paint += CaptureForm_Paint;
         this.KeyDown += CaptureForm_KeyDown;
+
+        // 🔧 修正 #9: 顯示操作提示
+        this.Load += (s, e) =>
+        {
+            // 可選: 在視窗上顯示提示文字
+            ShowInstructions();
+        };
     }
 
+    // 🔧 修正 #9: 新增操作說明
+    private void ShowInstructions()
+    {
+        // 在螢幕中央上方顯示提示
+        using (Graphics g = this.CreateGraphics())
+        {
+            string instruction = "拖曳滑鼠選擇區域 | 按 ESC 取消";
+            Font font = new Font("微軟正黑體", 14, FontStyle.Bold);
+            SizeF textSize = g.MeasureString(instruction, font);
+
+            Point location = new Point(
+                (this.Width - (int)textSize.Width) / 2,
+                30
+            );
+
+            // 繪製半透明背景
+            using (SolidBrush bgBrush = new SolidBrush(Color.FromArgb(200, 0, 0, 0)))
+            {
+                g.FillRectangle(bgBrush,
+                    location.X - 10,
+                    location.Y - 5,
+                    textSize.Width + 20,
+                    textSize.Height + 10
+                );
+            }
+
+            // 繪製文字
+            using (SolidBrush textBrush = new SolidBrush(Color.White))
+            {
+                g.DrawString(instruction, font, textBrush, location);
+            }
+
+            font.Dispose();
+        }
+    }
+
+    // 🔧 修正 #5: 改善游標建立與釋放
     private Cursor CreateHighContrastCrossCursor()
     {
         const int size = 32;
         Bitmap bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+
         using (Graphics g = Graphics.FromImage(bmp))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -314,8 +384,16 @@ internal class ScreenCaptureForm : Form
                 g.DrawLine(penInner, 1, half, size - 2, half);
             }
         }
+
         IntPtr hIcon = bmp.GetHicon();
-        return new Cursor(hIcon);
+        Cursor cursor = new Cursor(hIcon);
+
+        // 🔧 修正 #5: 釋放 Bitmap
+        bmp.Dispose();
+
+        // 注意: hIcon 應該在 Cursor 不再使用時釋放，但 .NET 會自動處理
+
+        return cursor;
     }
 
     private void CaptureForm_MouseDown(object sender, MouseEventArgs e)
@@ -344,7 +422,6 @@ internal class ScreenCaptureForm : Form
             invalidateRect.Inflate(2, 2);
 
             this.Invalidate(invalidateRect);
-            _prevSelectionRectangle = _selectionRectangle;
         }
     }
 
@@ -382,9 +459,33 @@ internal class ScreenCaptureForm : Form
                 GraphicsUnit.Pixel
             );
 
-            using (Pen borderPen = new Pen(Color.Red, 1))
+            using (Pen borderPen = new Pen(Color.Red, 2))
             {
                 e.Graphics.DrawRectangle(borderPen, _selectionRectangle);
+            }
+
+            // 🔧 額外改善: 顯示選取區域尺寸
+            if (_selectionRectangle.Width > 50 && _selectionRectangle.Height > 50)
+            {
+                string sizeText = $"{_selectionRectangle.Width} × {_selectionRectangle.Height}";
+                using (Font font = new Font("Arial", 10))
+                using (SolidBrush bgBrush = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
+                using (SolidBrush textBrush = new SolidBrush(Color.White))
+                {
+                    SizeF textSize = e.Graphics.MeasureString(sizeText, font);
+                    Point textPos = new Point(
+                        _selectionRectangle.X + 5,
+                        _selectionRectangle.Y + 5
+                    );
+
+                    e.Graphics.FillRectangle(bgBrush,
+                        textPos.X,
+                        textPos.Y,
+                        textSize.Width + 4,
+                        textSize.Height + 2
+                    );
+                    e.Graphics.DrawString(sizeText, font, textBrush, textPos);
+                }
             }
         }
     }
@@ -398,8 +499,13 @@ internal class ScreenCaptureForm : Form
         }
     }
 
+    // 🔧 修正 #5: 正確釋放游標資源
     protected override void Dispose(bool disposing)
     {
+        if (disposing)
+        {
+            _customCursor?.Dispose();
+        }
         base.Dispose(disposing);
     }
 }
@@ -408,16 +514,21 @@ internal class ScreenCaptureForm : Form
 internal class CountdownForm : Form
 {
     private Label lblCountdown;
+    private Label lblHint; // 新增提示文字
+
+    // 定義一個事件，當使用者想取消時觸發
+    public event EventHandler RequestCancel;
 
     public CountdownForm(int initialSeconds)
     {
         // 視窗設定
         this.FormBorderStyle = FormBorderStyle.None;
         this.StartPosition = FormStartPosition.Manual;
-        this.Size = new Size(200, 100);
+        this.Size = new Size(200, 120); // 🔧 增加高度以容納說明文字
         this.TopMost = true;
         this.BackColor = Color.FromArgb(40, 40, 40);
         this.Opacity = 0.9;
+        this.ShowInTaskbar = false; // 不顯示在工作列
 
         // 設定位置在螢幕右下角
         Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
@@ -425,18 +536,36 @@ internal class CountdownForm : Form
             workingArea.Right - this.Width - 20,
             workingArea.Bottom - this.Height - 20
         );
+        this.Region = System.Drawing.Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, 20, 20));
 
-        // 倒數標籤
+        // 1. 倒數標籤
         lblCountdown = new Label();
-        lblCountdown.Dock = DockStyle.Fill;
         lblCountdown.Text = $"{initialSeconds}";
-        lblCountdown.Font = new Font("微軟正黑體", 48, FontStyle.Bold);
+        lblCountdown.Font = new Font("Segoe UI", 48, FontStyle.Bold); // 改用現代字體
         lblCountdown.ForeColor = Color.White;
         lblCountdown.TextAlign = ContentAlignment.MiddleCenter;
+        lblCountdown.Dock = DockStyle.Top;
+        lblCountdown.Height = 80;
         this.Controls.Add(lblCountdown);
 
-        // 加上圓角效果 (optional)
-        this.Region = System.Drawing.Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, 20, 20));
+        // 2. 新增提示標籤 (讓使用者知道可以點擊取消)
+        lblHint = new Label();
+        lblHint.Text = "(點擊以取消)";
+        lblHint.Font = new Font("微軟正黑體", 9, FontStyle.Regular);
+        lblHint.ForeColor = Color.Gray;
+        lblHint.TextAlign = ContentAlignment.TopCenter;
+        lblHint.Dock = DockStyle.Fill;
+        this.Controls.Add(lblHint);
+
+        // 3. 綁定點擊事件 (點擊表單或標籤都要觸發)
+        this.Click += TriggerCancel;
+        lblCountdown.Click += TriggerCancel;
+        lblHint.Click += TriggerCancel;
+    }
+    private void TriggerCancel(object sender, EventArgs e)
+    {
+        // 觸發事件通知主視窗
+        RequestCancel?.Invoke(this, EventArgs.Empty);
     }
 
     [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]

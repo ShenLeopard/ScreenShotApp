@@ -28,176 +28,174 @@ namespace 螢幕擷取工具
         /// </summary>
         private void InitializeComponent()
         {
-            this.btnCaptureScreen = new System.Windows.Forms.Button();
-            this.btnRecognizeText = new System.Windows.Forms.Button();
+            // 初始化控制項
+            this.panelHeader = new System.Windows.Forms.Panel();
             this.btnCaptureNow = new System.Windows.Forms.Button();
-            this.pictureBoxCanvas = new System.Windows.Forms.PictureBox();
-            this.numericUpDownDelay = new System.Windows.Forms.NumericUpDown();
+            this.groupBoxDelay = new System.Windows.Forms.GroupBox();
+            this.btnCaptureScreen = new System.Windows.Forms.Button();
             this.lblDelayInfo = new System.Windows.Forms.Label();
-            this.lblHotkeyInfo = new System.Windows.Forms.Label();
-            this.groupBoxSettings = new System.Windows.Forms.GroupBox();
-            this.labelDelaySeconds = new System.Windows.Forms.Label();
+            this.numericUpDownDelay = new System.Windows.Forms.NumericUpDown();
+            this.panelFooter = new System.Windows.Forms.Panel();
+            this.btnRecognizeText = new System.Windows.Forms.Button();
+            this.panelCanvasContainer = new System.Windows.Forms.Panel();
+            this.pictureBoxCanvas = new System.Windows.Forms.PictureBox();
 
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxCanvas)).BeginInit();
+            // 開始佈局設定
+            this.panelHeader.SuspendLayout();
+            this.groupBoxDelay.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownDelay)).BeginInit();
-            this.groupBoxSettings.SuspendLayout();
+            this.panelFooter.SuspendLayout();
+            this.panelCanvasContainer.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxCanvas)).BeginInit();
             this.SuspendLayout();
 
             // 
-            // groupBoxSettings 設定群組
+            // Form1 設定 (現代深色風格)
             // 
-            this.groupBoxSettings.Controls.Add(this.numericUpDownDelay);
-            this.groupBoxSettings.Controls.Add(this.labelDelaySeconds);
-            this.groupBoxSettings.Controls.Add(this.lblDelayInfo);
-            this.groupBoxSettings.Controls.Add(this.lblHotkeyInfo);
-            this.groupBoxSettings.Location = new System.Drawing.Point(12, 12);
-            this.groupBoxSettings.Name = "groupBoxSettings";
-            this.groupBoxSettings.Size = new System.Drawing.Size(300, 130);
-            this.groupBoxSettings.TabIndex = 0;
-            this.groupBoxSettings.TabStop = false;
-            this.groupBoxSettings.Text = "📋 截圖設定";
+            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 21F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.Color.FromArgb(32, 32, 32); // 深色背景
+            this.ClientSize = new System.Drawing.Size(800, 600);
+            this.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ForeColor = System.Drawing.Color.White;
+            this.Name = "Form1";
+            this.Text = "AI 螢幕文字擷取助手";
+            this.MinimumSize = new System.Drawing.Size(600, 500);
 
             // 
-            // labelDelaySeconds 延遲標籤
+            // [區域 1] 頂部面板 (放置截圖功能)
             // 
-            this.labelDelaySeconds.AutoSize = true;
-            this.labelDelaySeconds.Location = new System.Drawing.Point(15, 30);
-            this.labelDelaySeconds.Name = "labelDelaySeconds";
-            this.labelDelaySeconds.Size = new System.Drawing.Size(80, 15);
-            this.labelDelaySeconds.TabIndex = 0;
-            this.labelDelaySeconds.Text = "延遲時間:";
-            this.labelDelaySeconds.Font = new System.Drawing.Font("微軟正黑體", 9F);
+            this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelHeader.Height = 100;
+            this.panelHeader.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+            this.panelHeader.Padding = new System.Windows.Forms.Padding(20);
+            this.panelHeader.Controls.Add(this.btnCaptureNow); // 立即截圖放左邊
+            this.panelHeader.Controls.Add(this.groupBoxDelay); // 延遲設定放右邊
 
             // 
-            // numericUpDownDelay 延遲秒數選擇器
+            // btnCaptureNow (立即截圖 - 主按鈕)
             // 
-            this.numericUpDownDelay.Location = new System.Drawing.Point(100, 27);
-            this.numericUpDownDelay.Name = "numericUpDownDelay";
-            this.numericUpDownDelay.Size = new System.Drawing.Size(60, 25);
-            this.numericUpDownDelay.TabIndex = 1;
-            this.numericUpDownDelay.Minimum = 0;
-            this.numericUpDownDelay.Maximum = 10;
-            this.numericUpDownDelay.Value = 3;
-            this.numericUpDownDelay.Font = new System.Drawing.Font("微軟正黑體", 9F);
-
-            // 
-            // lblDelayInfo 延遲資訊標籤
-            // 
-            this.lblDelayInfo.AutoSize = true;
-            this.lblDelayInfo.Location = new System.Drawing.Point(165, 30);
-            this.lblDelayInfo.Name = "lblDelayInfo";
-            this.lblDelayInfo.Size = new System.Drawing.Size(120, 15);
-            this.lblDelayInfo.TabIndex = 2;
-            this.lblDelayInfo.Text = "⏱️ 3 秒後自動截圖";
-            this.lblDelayInfo.ForeColor = System.Drawing.Color.OrangeRed;
-            this.lblDelayInfo.Font = new System.Drawing.Font("微軟正黑體", 9F, System.Drawing.FontStyle.Bold);
-
-            // 
-            // lblHotkeyInfo 快捷鍵資訊標籤
-            // 
-            this.lblHotkeyInfo.Location = new System.Drawing.Point(15, 65);
-            this.lblHotkeyInfo.Name = "lblHotkeyInfo";
-            this.lblHotkeyInfo.Size = new System.Drawing.Size(270, 50);
-            this.lblHotkeyInfo.TabIndex = 3;
-            this.lblHotkeyInfo.Text = "💡 使用方式:\r\n按下 Ctrl+Shift+F1 快捷鍵\r\n或點擊「擷取畫面」按鈕";
-            this.lblHotkeyInfo.ForeColor = System.Drawing.Color.FromArgb(0, 102, 204);
-            this.lblHotkeyInfo.Font = new System.Drawing.Font("微軟正黑體", 9F);
-
-            //
-            // btnCaptureScreen 擷取畫面按鈕 (延遲)
-            //
-            this.btnCaptureScreen.Location = new System.Drawing.Point(330, 25);
-            this.btnCaptureScreen.Name = "btnCaptureScreen";
-            this.btnCaptureScreen.Size = new System.Drawing.Size(140, 50);
-            this.btnCaptureScreen.TabIndex = 4;
-            this.btnCaptureScreen.Text = "⏱️ 延遲截圖";
-            this.btnCaptureScreen.UseVisualStyleBackColor = true;
-            this.btnCaptureScreen.Font = new System.Drawing.Font("微軟正黑體", 10F, System.Drawing.FontStyle.Bold);
-            this.btnCaptureScreen.BackColor = System.Drawing.Color.FromArgb(255, 152, 0);
-            this.btnCaptureScreen.ForeColor = System.Drawing.Color.White;
-            this.btnCaptureScreen.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnCaptureScreen.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnCaptureScreen.Click += new System.EventHandler(this.btnCaptureScreen_Click);
-
-            //
-            // btnCaptureNow 立即截圖按鈕 (新增)
-            //
-            this.btnCaptureNow.Location = new System.Drawing.Point(490, 25);
-            this.btnCaptureNow.Name = "btnCaptureNow";
-            this.btnCaptureNow.Size = new System.Drawing.Size(140, 50);
-            this.btnCaptureNow.TabIndex = 5;
+            this.btnCaptureNow.Dock = System.Windows.Forms.DockStyle.Left;
+            this.btnCaptureNow.Width = 220;
             this.btnCaptureNow.Text = "⚡ 立即截圖";
-            this.btnCaptureNow.UseVisualStyleBackColor = true;
-            this.btnCaptureNow.Font = new System.Drawing.Font("微軟正黑體", 10F, System.Drawing.FontStyle.Bold);
-            this.btnCaptureNow.BackColor = System.Drawing.Color.FromArgb(76, 175, 80);
+            this.btnCaptureNow.BackColor = System.Drawing.Color.FromArgb(0, 120, 215); // 鮮豔藍色
             this.btnCaptureNow.ForeColor = System.Drawing.Color.White;
             this.btnCaptureNow.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCaptureNow.FlatAppearance.BorderSize = 0;
+            this.btnCaptureNow.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
             this.btnCaptureNow.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCaptureNow.Click += new System.EventHandler(this.btnCaptureNow_Click);
 
-            //
-            // btnRecognizeText 辨識文字按鈕
-            //
-            this.btnRecognizeText.Location = new System.Drawing.Point(650, 25);
-            this.btnRecognizeText.Name = "btnRecognizeText";
-            this.btnRecognizeText.Size = new System.Drawing.Size(140, 50);
-            this.btnRecognizeText.TabIndex = 6;
-            this.btnRecognizeText.Text = "🔍 辨識文字";
-            this.btnRecognizeText.UseVisualStyleBackColor = true;
-            this.btnRecognizeText.Font = new System.Drawing.Font("微軟正黑體", 10F, System.Drawing.FontStyle.Bold);
-            this.btnRecognizeText.BackColor = System.Drawing.Color.FromArgb(33, 150, 243);
+            // 
+            // groupBoxDelay (延遲功能區塊 - 用群組框隔開，避免誤觸)
+            // 
+            this.groupBoxDelay.Dock = System.Windows.Forms.DockStyle.Right;
+            this.groupBoxDelay.Width = 420;
+            this.groupBoxDelay.Text = "⏳ 延遲模式";
+            this.groupBoxDelay.ForeColor = System.Drawing.Color.LightGray;
+            this.groupBoxDelay.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.groupBoxDelay.Controls.Add(this.lblDelayInfo);
+            this.groupBoxDelay.Controls.Add(this.numericUpDownDelay);
+            this.groupBoxDelay.Controls.Add(this.btnCaptureScreen);
+
+            // 
+            // numericUpDownDelay (秒數)
+            // 
+            this.numericUpDownDelay.Location = new System.Drawing.Point(15, 35);
+            this.numericUpDownDelay.Font = new System.Drawing.Font("Segoe UI", 14F);
+            this.numericUpDownDelay.Size = new System.Drawing.Size(60, 32);
+            this.numericUpDownDelay.Minimum = 0;
+            this.numericUpDownDelay.Maximum = 10;
+            this.numericUpDownDelay.Value = 3;
+            this.numericUpDownDelay.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+
+            // 
+            // btnCaptureScreen (延遲截圖按鈕 - 放在秒數旁邊)
+            // 
+            this.btnCaptureScreen.Location = new System.Drawing.Point(90, 30);
+            this.btnCaptureScreen.Size = new System.Drawing.Size(140, 40);
+            this.btnCaptureScreen.Text = "開始倒數";
+            this.btnCaptureScreen.BackColor = System.Drawing.Color.FromArgb(60, 60, 60); // 深灰色，降低視覺權重
+            this.btnCaptureScreen.ForeColor = System.Drawing.Color.White;
+            this.btnCaptureScreen.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCaptureScreen.FlatAppearance.BorderSize = 0;
+            this.btnCaptureScreen.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnCaptureScreen.Click += new System.EventHandler(this.btnCaptureScreen_Click);
+
+            // 
+            // lblDelayInfo (狀態文字)
+            // 
+            this.lblDelayInfo.AutoSize = true;
+            this.lblDelayInfo.Location = new System.Drawing.Point(245, 40);
+            this.lblDelayInfo.Text = "3秒後";
+            this.lblDelayInfo.ForeColor = System.Drawing.Color.Orange;
+
+            // 
+            // [區域 2] 底部面板 (放置辨識功能)
+            // 這裡的策略是：把「辨識」放到最下面，讓它與「截圖」物理隔離
+            // 
+            this.panelFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.panelFooter.Height = 80;
+            this.panelFooter.BackColor = System.Drawing.Color.FromArgb(40, 40, 40);
+            this.panelFooter.Padding = new System.Windows.Forms.Padding(100, 15, 100, 15); // 左右留白，讓按鈕置中
+            this.panelFooter.Controls.Add(this.btnRecognizeText);
+
+            // 
+            // btnRecognizeText (辨識文字 - 巨大的確認按鈕)
+            // 
+            this.btnRecognizeText.Dock = System.Windows.Forms.DockStyle.Fill; // 填滿底部中央
+            this.btnRecognizeText.Text = "🔍 分析圖片並辨識文字"; // 加長文字，增加可點擊區域
+            this.btnRecognizeText.BackColor = System.Drawing.Color.SeaGreen; // 綠色，代表「執行/通過」
             this.btnRecognizeText.ForeColor = System.Drawing.Color.White;
             this.btnRecognizeText.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRecognizeText.FlatAppearance.BorderSize = 0;
+            this.btnRecognizeText.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
             this.btnRecognizeText.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnRecognizeText.Click += new System.EventHandler(this.btnRecognizeText_Click);
 
-            //
-            // pictureBoxCanvas 圖片顯示區
-            //
-            this.pictureBoxCanvas.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.pictureBoxCanvas.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.pictureBoxCanvas.Location = new System.Drawing.Point(12, 155);
-            this.pictureBoxCanvas.Name = "pictureBoxCanvas";
-            this.pictureBoxCanvas.Size = new System.Drawing.Size(776, 403);
+            // 
+            // [區域 3] 中間圖片區 (自動填滿剩餘空間)
+            // 
+            this.panelCanvasContainer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelCanvasContainer.Padding = new System.Windows.Forms.Padding(20); // 圖片與邊框的距離
+            this.panelCanvasContainer.Controls.Add(this.pictureBoxCanvas);
+
+            // 
+            // pictureBoxCanvas
+            // 
+            this.pictureBoxCanvas.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pictureBoxCanvas.BackColor = System.Drawing.Color.FromArgb(50, 50, 50); // 稍微亮一點的背景，區分畫布
             this.pictureBoxCanvas.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBoxCanvas.TabIndex = 7;
-            this.pictureBoxCanvas.TabStop = false;
-            this.pictureBoxCanvas.BackColor = System.Drawing.Color.WhiteSmoke;
+            this.pictureBoxCanvas.BorderStyle = System.Windows.Forms.BorderStyle.None; // 移除老舊邊框
 
-            //
-            // Form1
-            //
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 570);
-            this.Controls.Add(this.btnRecognizeText);
-            this.Controls.Add(this.btnCaptureNow);
-            this.Controls.Add(this.btnCaptureScreen);
-            this.Controls.Add(this.groupBoxSettings);
-            this.Controls.Add(this.pictureBoxCanvas);
-            this.Name = "Form1";
-            this.Text = "螢幕文字擷取器 - Screen Text Capture";
-            this.MinimumSize = new System.Drawing.Size(800, 400);
+            // 
+            // 加入控制項 (注意順序，Dock 屬性依賴加入順序)
+            // 
+            this.Controls.Add(this.panelCanvasContainer); // 中間
+            this.Controls.Add(this.panelHeader);          // 上方
+            this.Controls.Add(this.panelFooter);          // 下方
 
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxCanvas)).EndInit();
+            // 結束佈局
+            this.panelHeader.ResumeLayout(false);
+            this.groupBoxDelay.ResumeLayout(false);
+            this.groupBoxDelay.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownDelay)).EndInit();
-            this.groupBoxSettings.ResumeLayout(false);
-            this.groupBoxSettings.PerformLayout();
+            this.panelFooter.ResumeLayout(false);
+            this.panelCanvasContainer.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxCanvas)).EndInit();
             this.ResumeLayout(false);
         }
-
         #endregion
 
+        private System.Windows.Forms.Panel panelHeader; // 頂部面板
+        private System.Windows.Forms.Panel panelFooter; // 底部面板
+        private System.Windows.Forms.Panel panelCanvasContainer; // 圖片容器(做邊框用)
         private System.Windows.Forms.Button btnCaptureScreen;
         private System.Windows.Forms.Button btnCaptureNow;
         private System.Windows.Forms.Button btnRecognizeText;
         private System.Windows.Forms.PictureBox pictureBoxCanvas;
         private System.Windows.Forms.NumericUpDown numericUpDownDelay;
         private System.Windows.Forms.Label lblDelayInfo;
-        private System.Windows.Forms.Label lblHotkeyInfo;
-        private System.Windows.Forms.GroupBox groupBoxSettings;
-        private System.Windows.Forms.Label labelDelaySeconds;
+        private System.Windows.Forms.GroupBox groupBoxDelay; // 改用 GroupBox 包裝延遲功能
     }
 }
