@@ -30,14 +30,19 @@ jobs:
     - name: Publish app
       run: dotnet publish "./螢幕擷取工具/螢幕擷取工具/螢幕擷取工具.csproj" -c Release -r win-x64 --self-contained true -o publish_output
 
-    - name: Zip output
-      run: Compress-Archive -Path publish_output/* -DestinationPath MyApp.zip
+    # 安裝 7zip（比 Compress-Archive 穩定很多）
+    - name: Install 7zip
+      run: choco install 7zip -y
+
+    # 以當前 timestamp 打包，避免日期異常
+    - name: Create ZIP package
+      run: 7z a ScreenCaptureTool.zip .\publish_output\*
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v1.0.${{ github.run_number }}
         name: Release v1.0.${{ github.run_number }}
-        files: 螢幕擷取工具.zip
+        files: ScreenCaptureTool.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
